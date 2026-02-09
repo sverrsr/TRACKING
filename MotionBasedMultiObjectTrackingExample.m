@@ -54,7 +54,6 @@ nextId = 1; % ID of the next track
 
 % Detect moving objects, and track them across video frames.
 while hasFrame(obj.reader)
-    open(obj.writer);
     frame = readFrame(obj.reader);
     [centroids, bboxes, mask] = detectObjects(frame);
     predictNewLocationsOfTracks();
@@ -67,9 +66,9 @@ while hasFrame(obj.reader)
     createNewTracks();
     
     displayTrackingResults();
-    close(obj.writer);   % NOT close(obj.writer) without writing frames
     
 end
+close(obj.writer);   % close writer after processing all frames
 
 
 
@@ -375,6 +374,7 @@ end
         % Convert the frame and the mask to uint8 RGB.
         frame = im2uint8(frame);
         mask = uint8(repmat(mask, [1, 1, 3])) .* 255;
+        outputFrame = zeros(size(frame), 'like', frame);
         
         minVisibleCount = 20;
         if ~isempty(tracks)
@@ -405,8 +405,19 @@ end
                 isPredicted(predictedTrackInds) = {' predicted'};
                 labels = strcat(labels, isPredicted);
                 
-                % Draw the objects on the frame.
-                frame = insertObjectAnnotation(frame, 'rectangle', ...
+                for i = 1:size(bboxes, 1)
+                    bbox = round(bboxes(i, :));
+                    x1 = max(1, bbox(1));
+                    y1 = max(1, bbox(2));
+                    x2 = min(size(frame, 2), bbox(1) + bbox(3) - 1);
+                    y2 = min(size(frame, 1), bbox(2) + bbox(4) - 1);
+                    if x2 >= x1 && y2 >= y1
+                        outputFrame(y1:y2, x1:x2, :) = frame(y1:y2, x1:x2, :);
+                    end
+                end
+
+                % Draw the objects on the output frame.
+                outputFrame = insertObjectAnnotation(outputFrame, 'rectangle', ...
                     bboxes, labels);
               
                 
@@ -418,8 +429,8 @@ end
         
         % Display the mask and the frame.
         % obj.maskPlayer.step(mask);        
-        obj.videoPlayer.step(frame);
-        writeVideo(obj.writer, frame);   % <-- THIS is why your file was empty
+        obj.videoPlayer.step(outputFrame);
+        writeVideo(obj.writer, outputFrame);   % <-- THIS is why your file was empty
     end
 
 %% Summary
