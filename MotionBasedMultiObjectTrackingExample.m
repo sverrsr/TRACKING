@@ -88,7 +88,9 @@ close(obj.writer);   % close writer after processing all frames
         % Create two video players, one to display the video,
         % and one to display the foreground mask.
         % obj.maskPlayer = vision.VideoPlayer('Position', [740, 400, 700, 400]);
-        obj.videoPlayer = vision.VideoPlayer('Position', [20, 400, 700, 400]);
+        obj.playbackRate = max(1, obj.reader.FrameRate / 2);
+        obj.videoPlayer = vision.VideoPlayer('Position', [20, 400, 1400, 400], ...
+            'FrameRate', obj.playbackRate);
         
         % Create System objects for foreground detection and blob analysis
         
@@ -112,7 +114,7 @@ close(obj.writer);   % close writer after processing all frames
 
         % Output video (tracked blobs only)
         obj.writer = VideoWriter('tracked_blobs_only.mp4','MPEG-4');
-        obj.writer.FrameRate = obj.reader.FrameRate;
+        obj.writer.FrameRate = obj.playbackRate;
         open(obj.writer);
 
     end
@@ -427,10 +429,12 @@ close(obj.writer);   % close writer after processing all frames
             end
         end
         
+        combinedFrame = cat(2, frame, outputFrame);
+
         % Display the mask and the frame.
-        % obj.maskPlayer.step(mask);        
-        obj.videoPlayer.step(outputFrame);
-        writeVideo(obj.writer, outputFrame);   % <-- THIS is why your file was empty
+        % obj.maskPlayer.step(mask);
+        obj.videoPlayer.step(combinedFrame);
+        writeVideo(obj.writer, combinedFrame);   % <-- THIS is why your file was empty
     end
 
 %% Summary
